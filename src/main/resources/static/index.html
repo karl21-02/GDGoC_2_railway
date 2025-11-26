@@ -14,7 +14,7 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(rgba(15, 15, 25, 0.85), rgba(15, 15, 25, 0.9)),
-                        url('/images/스크린샷 2025-11-26 오후 5.16.21.png');
+                        url('/images/background.png');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -341,9 +341,6 @@
                             <div class="card-media">
                                 <img src="/images/${img}" alt="${img}" onclick="openModal(${index})" loading="lazy">
                             </div>
-                            <div class="card-content">
-                                <div class="card-title">${img}</div>
-                            </div>
                         </div>
                     `).join('');
                 } else {
@@ -357,9 +354,6 @@
                             <div class="card-media">
                                 <video src="/videos/${vid}" onclick="openModal(${images.length + index})" muted></video>
                                 <span class="video-badge">▶ 영상</span>
-                            </div>
-                            <div class="card-content">
-                                <div class="card-title">${vid}</div>
                             </div>
                         </div>
                     `).join('');
