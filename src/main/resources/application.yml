@@ -1,3 +1,6 @@
 spring:
   application:
     name: gdgoc
+
+server:
+  port: ${PORT:8080}
