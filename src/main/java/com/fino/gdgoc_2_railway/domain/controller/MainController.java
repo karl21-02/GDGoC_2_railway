@@ -33,9 +33,30 @@ public class MainController {
         return imageNames;
     }
 
+    @GetMapping("/api/videos")
+    public List<String> getVideos() throws IOException {
+        List<String> videoNames = new ArrayList<>();
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        Resource[] resources = resolver.getResources("classpath:static/videos/*");
+
+        for (Resource resource : resources) {
+            String filename = resource.getFilename();
+            if (filename != null && isVideoFile(filename)) {
+                videoNames.add(filename);
+            }
+        }
+        return videoNames;
+    }
+
     private boolean isImageFile(String filename) {
         String lower = filename.toLowerCase();
         return lower.endsWith(".png") || lower.endsWith(".jpg") ||
                lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".webp");
+    }
+
+    private boolean isVideoFile(String filename) {
+        String lower = filename.toLowerCase();
+        return lower.endsWith(".mp4") || lower.endsWith(".webm") ||
+               lower.endsWith(".mov") || lower.endsWith(".avi") || lower.endsWith(".mkv");
     }
 }

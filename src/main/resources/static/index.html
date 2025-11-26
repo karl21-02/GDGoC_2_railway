@@ -13,7 +13,11 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            background: linear-gradient(rgba(15, 15, 25, 0.85), rgba(15, 15, 25, 0.9)),
+                        url('/images/스크린샷 2025-11-26 오후 5.16.21.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
             min-height: 100vh;
             padding: 40px 20px;
         }
@@ -32,7 +36,7 @@
             color: white;
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
         }
 
         .subtitle {
@@ -40,10 +44,18 @@
             font-size: 1.2rem;
         }
 
-        .image-count {
+        .media-count {
             color: rgba(255,255,255,0.8);
             font-size: 1rem;
             margin-top: 10px;
+        }
+
+        .section-title {
+            color: white;
+            font-size: 1.5rem;
+            margin: 40px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
         }
 
         .gallery {
@@ -54,19 +66,21 @@
         }
 
         .card {
-            background: white;
+            background: rgba(30, 30, 45, 0.9);
             border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
         .card:hover {
             transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            border-color: rgba(255,255,255,0.2);
         }
 
-        .card img {
+        .card img, .card video {
             width: 100%;
             height: 250px;
             object-fit: cover;
@@ -74,7 +88,7 @@
             transition: transform 0.3s ease;
         }
 
-        .card:hover img {
+        .card:hover img, .card:hover video {
             transform: scale(1.03);
         }
 
@@ -84,8 +98,23 @@
 
         .card-title {
             font-size: 1rem;
-            color: #333;
+            color: rgba(255,255,255,0.9);
             font-weight: 500;
+        }
+
+        .video-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .card-media {
+            position: relative;
         }
 
         /* Loading */
@@ -96,7 +125,7 @@
             padding: 50px;
         }
 
-        /* Modal for full image view */
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -114,7 +143,7 @@
             display: flex;
         }
 
-        .modal img {
+        .modal img, .modal video {
             max-width: 95%;
             max-height: 95%;
             border-radius: 8px;
@@ -146,13 +175,25 @@
         .modal-next { right: 10px; }
 
         .modal-nav:hover {
-            color: #74b9ff;
+            color: #a29bfe;
+        }
+
+        #modalContent {
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         footer {
             text-align: center;
             margin-top: 50px;
             color: rgba(255,255,255,0.7);
+        }
+
+        .empty-message {
+            color: rgba(255,255,255,0.6);
+            font-style: italic;
+            padding: 20px;
         }
 
         @media (max-width: 480px) {
@@ -175,12 +216,18 @@
         <header>
             <h1>사진 저장소</h1>
             <p class="subtitle">친구들끼리!</p>
-            <p class="image-count" id="imageCount"></p>
+            <p class="media-count" id="mediaCount"></p>
         </header>
 
-        <div class="gallery" id="gallery">
+        <!-- 사진 섹션 -->
+        <h2 class="section-title" id="photoSection" style="display:none;">📷 사진</h2>
+        <div class="gallery" id="photoGallery">
             <div class="loading">사진을 불러오는 중...</div>
         </div>
+
+        <!-- 영상 섹션 -->
+        <h2 class="section-title" id="videoSection" style="display:none;">🎬 영상</h2>
+        <div class="gallery" id="videoGallery"></div>
 
         <footer>
             <p>Made with love by friends</p>
@@ -188,78 +235,128 @@
     </div>
 
     <!-- Modal -->
-    <div class="modal" id="imageModal">
+    <div class="modal" id="mediaModal">
         <span class="modal-close" onclick="closeModal()">&times;</span>
-        <span class="modal-nav modal-prev" onclick="prevImage()">&#10094;</span>
-        <img id="modalImage" src="" alt="Full size image">
-        <span class="modal-nav modal-next" onclick="nextImage()">&#10095;</span>
+        <span class="modal-nav modal-prev" onclick="prevMedia()">&#10094;</span>
+        <div id="modalContent"></div>
+        <span class="modal-nav modal-next" onclick="nextMedia()">&#10095;</span>
     </div>
 
     <script>
-        let images = [];
+        let allMedia = [];
         let currentIndex = 0;
 
-        async function loadImages() {
+        async function loadMedia() {
             try {
-                const response = await fetch('/api/images');
-                images = await response.json();
+                const [imagesRes, videosRes] = await Promise.all([
+                    fetch('/api/images'),
+                    fetch('/api/videos')
+                ]);
 
-                const gallery = document.getElementById('gallery');
-                const imageCount = document.getElementById('imageCount');
+                const images = await imagesRes.json();
+                const videos = await videosRes.json();
 
-                if (images.length === 0) {
-                    gallery.innerHTML = '<div class="loading">아직 사진이 없습니다.</div>';
-                    return;
+                const photoGallery = document.getElementById('photoGallery');
+                const videoGallery = document.getElementById('videoGallery');
+                const mediaCount = document.getElementById('mediaCount');
+
+                // 전체 미디어 배열 생성
+                allMedia = [
+                    ...images.map(img => ({ name: img, type: 'image', path: `/images/${img}` })),
+                    ...videos.map(vid => ({ name: vid, type: 'video', path: `/videos/${vid}` }))
+                ];
+
+                mediaCount.textContent = `사진 ${images.length}장, 영상 ${videos.length}개`;
+
+                // 사진 렌더링
+                if (images.length > 0) {
+                    document.getElementById('photoSection').style.display = 'block';
+                    photoGallery.innerHTML = images.map((img, index) => `
+                        <div class="card">
+                            <div class="card-media">
+                                <img src="/images/${img}" alt="${img}" onclick="openModal(${index})" loading="lazy">
+                            </div>
+                            <div class="card-content">
+                                <div class="card-title">${img}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    photoGallery.innerHTML = '<p class="empty-message">아직 사진이 없습니다.</p>';
                 }
 
-                imageCount.textContent = `총 ${images.length}장의 사진`;
-
-                gallery.innerHTML = images.map((img, index) => `
-                    <div class="card">
-                        <img src="/images/${img}" alt="${img}" onclick="openModal(${index})" loading="lazy">
-                        <div class="card-content">
-                            <div class="card-title">${img}</div>
+                // 영상 렌더링
+                if (videos.length > 0) {
+                    document.getElementById('videoSection').style.display = 'block';
+                    videoGallery.innerHTML = videos.map((vid, index) => `
+                        <div class="card">
+                            <div class="card-media">
+                                <video src="/videos/${vid}" onclick="openModal(${images.length + index})" muted></video>
+                                <span class="video-badge">▶ 영상</span>
+                            </div>
+                            <div class="card-content">
+                                <div class="card-title">${vid}</div>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                } else {
+                    videoGallery.innerHTML = '';
+                }
 
             } catch (error) {
-                console.error('Error loading images:', error);
-                document.getElementById('gallery').innerHTML =
-                    '<div class="loading">사진을 불러오는데 실패했습니다.</div>';
+                console.error('Error loading media:', error);
+                document.getElementById('photoGallery').innerHTML =
+                    '<div class="loading">미디어를 불러오는데 실패했습니다.</div>';
             }
         }
 
         function openModal(index) {
             currentIndex = index;
-            document.getElementById('modalImage').src = `/images/${images[currentIndex]}`;
-            document.getElementById('imageModal').classList.add('active');
+            updateModalContent();
+            document.getElementById('mediaModal').classList.add('active');
+        }
+
+        function updateModalContent() {
+            const media = allMedia[currentIndex];
+            const modalContent = document.getElementById('modalContent');
+
+            if (media.type === 'image') {
+                modalContent.innerHTML = `<img src="${media.path}" alt="${media.name}">`;
+            } else {
+                modalContent.innerHTML = `<video src="${media.path}" controls autoplay style="max-width:95%; max-height:95%;"></video>`;
+            }
         }
 
         function closeModal() {
-            document.getElementById('imageModal').classList.remove('active');
+            document.getElementById('mediaModal').classList.remove('active');
+            const video = document.querySelector('#modalContent video');
+            if (video) video.pause();
         }
 
-        function prevImage() {
-            currentIndex = (currentIndex - 1 + images.length) % images.length;
-            document.getElementById('modalImage').src = `/images/${images[currentIndex]}`;
+        function prevMedia() {
+            const video = document.querySelector('#modalContent video');
+            if (video) video.pause();
+            currentIndex = (currentIndex - 1 + allMedia.length) % allMedia.length;
+            updateModalContent();
         }
 
-        function nextImage() {
-            currentIndex = (currentIndex + 1) % images.length;
-            document.getElementById('modalImage').src = `/images/${images[currentIndex]}`;
+        function nextMedia() {
+            const video = document.querySelector('#modalContent video');
+            if (video) video.pause();
+            currentIndex = (currentIndex + 1) % allMedia.length;
+            updateModalContent();
         }
 
         document.addEventListener('keydown', (e) => {
-            if (!document.getElementById('imageModal').classList.contains('active')) return;
+            if (!document.getElementById('mediaModal').classList.contains('active')) return;
 
             if (e.key === 'Escape') closeModal();
-            if (e.key === 'ArrowLeft') prevImage();
-            if (e.key === 'ArrowRight') nextImage();
+            if (e.key === 'ArrowLeft') prevMedia();
+            if (e.key === 'ArrowRight') nextMedia();
         });
 
-        // Load images on page load
-        loadImages();
+        // Load media on page load
+        loadMedia();
     </script>
 </body>
 </html>
