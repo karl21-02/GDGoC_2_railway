@@ -50,19 +50,57 @@
             margin-top: 10px;
         }
 
-        .section-title {
+        /* Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tab-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.7);
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.2);
             color: white;
-            font-size: 1.5rem;
-            margin: 40px 0 20px 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .tab-btn.active {
+            background: rgba(255,255,255,0.95);
+            color: #1a1a2e;
+            font-weight: 600;
+            border-color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         .gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
+            column-count: 4;
+            column-gap: 20px;
             padding: 20px 0;
+        }
+
+        @media (max-width: 1200px) {
+            .gallery { column-count: 3; }
+        }
+
+        @media (max-width: 900px) {
+            .gallery { column-count: 2; }
         }
 
         .card {
@@ -72,6 +110,8 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.4);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             border: 1px solid rgba(255,255,255,0.1);
+            break-inside: avoid;
+            margin-bottom: 20px;
         }
 
         .card:hover {
@@ -82,8 +122,8 @@
 
         .card img, .card video {
             width: 100%;
-            height: 250px;
-            object-fit: cover;
+            height: auto;
+            display: block;
             cursor: pointer;
             transition: transform 0.3s ease;
         }
@@ -202,7 +242,7 @@
             }
 
             .gallery {
-                grid-template-columns: 1fr;
+                column-count: 1;
             }
 
             .modal-nav {
@@ -219,15 +259,23 @@
             <p class="media-count" id="mediaCount"></p>
         </header>
 
-        <!-- 사진 섹션 -->
-        <h2 class="section-title" id="photoSection" style="display:none;">📷 사진</h2>
-        <div class="gallery" id="photoGallery">
-            <div class="loading">사진을 불러오는 중...</div>
+        <!-- 탭 버튼 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('photos')">📷 사진 <span id="photoCount"></span></button>
+            <button class="tab-btn" onclick="switchTab('videos')">🎬 영상 <span id="videoCount"></span></button>
         </div>
 
-        <!-- 영상 섹션 -->
-        <h2 class="section-title" id="videoSection" style="display:none;">🎬 영상</h2>
-        <div class="gallery" id="videoGallery"></div>
+        <!-- 사진 탭 -->
+        <div class="tab-content active" id="photosTab">
+            <div class="gallery" id="photoGallery">
+                <div class="loading">사진을 불러오는 중...</div>
+            </div>
+        </div>
+
+        <!-- 영상 탭 -->
+        <div class="tab-content" id="videosTab">
+            <div class="gallery" id="videoGallery"></div>
+        </div>
 
         <footer>
             <p>Made with love by friends</p>
@@ -245,6 +293,21 @@
     <script>
         let allMedia = [];
         let currentIndex = 0;
+        let imageCount = 0;
+
+        function switchTab(tab) {
+            // 버튼 활성화 상태 변경
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            if (tab === 'photos') {
+                document.querySelector('.tab-btn:first-child').classList.add('active');
+                document.getElementById('photosTab').classList.add('active');
+            } else {
+                document.querySelector('.tab-btn:last-child').classList.add('active');
+                document.getElementById('videosTab').classList.add('active');
+            }
+        }
 
         async function loadMedia() {
             try {
@@ -255,10 +318,10 @@
 
                 const images = await imagesRes.json();
                 const videos = await videosRes.json();
+                imageCount = images.length;
 
                 const photoGallery = document.getElementById('photoGallery');
                 const videoGallery = document.getElementById('videoGallery');
-                const mediaCount = document.getElementById('mediaCount');
 
                 // 전체 미디어 배열 생성
                 allMedia = [
@@ -266,11 +329,13 @@
                     ...videos.map(vid => ({ name: vid, type: 'video', path: `/videos/${vid}` }))
                 ];
 
-                mediaCount.textContent = `사진 ${images.length}장, 영상 ${videos.length}개`;
+                // 카운트 업데이트
+                document.getElementById('mediaCount').textContent = `총 ${images.length + videos.length}개`;
+                document.getElementById('photoCount').textContent = `(${images.length})`;
+                document.getElementById('videoCount').textContent = `(${videos.length})`;
 
                 // 사진 렌더링
                 if (images.length > 0) {
-                    document.getElementById('photoSection').style.display = 'block';
                     photoGallery.innerHTML = images.map((img, index) => `
                         <div class="card">
                             <div class="card-media">
@@ -287,7 +352,6 @@
 
                 // 영상 렌더링
                 if (videos.length > 0) {
-                    document.getElementById('videoSection').style.display = 'block';
                     videoGallery.innerHTML = videos.map((vid, index) => `
                         <div class="card">
                             <div class="card-media">
@@ -300,7 +364,7 @@
                         </div>
                     `).join('');
                 } else {
-                    videoGallery.innerHTML = '';
+                    videoGallery.innerHTML = '<p class="empty-message">아직 영상이 없습니다.</p>';
                 }
 
             } catch (error) {
